@@ -1,6 +1,5 @@
 ﻿using Askmethat.Aspnet.JsonLocalizer.Extensions;
 using Askmethat.Aspnet.JsonLocalizer.Format;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using System;
@@ -9,44 +8,21 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using Askmethat.Aspnet.JsonLocalizer.JsonOptions;
+using System.Net.Http;
+using System.Reflection;
+using System.Text.Json;
+#if NETCORE
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+#endif
+
 
 namespace Askmethat.Aspnet.JsonLocalizer.Localizer
 {
-    internal class JsonStringLocalizer : JsonStringLocalizerBase, IJsonStringLocalizer
+    internal partial class JsonStringLocalizer : JsonStringLocalizerBase, IJsonStringLocalizer
     {
-        
-#if NETCORE
-        private readonly IWebHostEnvironment _env;
 
-        public JsonStringLocalizer(IOptions<JsonLocalizationOptions> localizationOptions, IWebHostEnvironment env, string baseName
-= null) : base(localizationOptions, baseName)
-        {
-            _env = env;
-            resourcesRelativePath = GetJsonRelativePath(_localizationOptions.Value.ResourcesPath);
-        }
-#elif BLAZORASM
-         private readonly IWebAssemblyHostEnvironment _env;
-        
-          public JsonStringLocalizer(IOptions<JsonLocalizationOptions> localizationOptions, IWebAssemblyHostEnvironment env, string baseName
- = null) : base(localizationOptions, baseName)
-        {
-            _env = env;
-            resourcesRelativePath = GetJsonRelativePath(_localizationOptions.Value.ResourcesPath);
-        }
-#else
-
-        private readonly IHostingEnvironment _env;
-
-        public JsonStringLocalizer(IOptions<JsonLocalizationOptions> localizationOptions, IHostingEnvironment env,
-            string baseName = null) : base(localizationOptions, baseName)
-        {
-            _env = env;
-            resourcesRelativePath = GetJsonRelativePath(_localizationOptions.Value.ResourcesPath);
-        }
-#endif
-
+        private IDictionary<string, IDictionary<string, string>> _missingJsonValues = null;
+        private string _missingTranslations = null;
 
         public LocalizedString this[string name]
         {
@@ -113,13 +89,14 @@ namespace Askmethat.Aspnet.JsonLocalizer.Localizer
 
             string format = name;
 
-            if(localization != null) {
+            if (localization != null)
+            {
                 // try get the localization for the specified rule
                 if (localization.TryGetValue(nameWithRule, out LocalizatedFormat localizedValue))
                 {
                     format = localizedValue.Value;
                 }
-                else 
+                else
                 {
                     // if no translation was found for that rule, try with the "Other" rule.
                     var nameWithOtherRule = $"{name}.{PluralizationConstants.Other}";
@@ -185,9 +162,11 @@ namespace Askmethat.Aspnet.JsonLocalizer.Localizer
                 throw new ArgumentNullException(nameof(name));
             }
 
+            CultureInfo? culture = null;
             if (shouldTryDefaultCulture && !IsUICultureCurrentCulture(CultureInfo.CurrentUICulture))
             {
-                InitJsonFromCulture(CultureInfo.CurrentUICulture);
+                culture = CultureInfo.CurrentUICulture;
+                InitJsonFromCulture(culture);
             }
 
             if (localization != null && localization.TryGetValue(name, out LocalizatedFormat localizedValue))
@@ -197,7 +176,8 @@ namespace Askmethat.Aspnet.JsonLocalizer.Localizer
 
             if (shouldTryDefaultCulture)
             {
-                InitJsonFromCulture(_localizationOptions.Value.DefaultCulture);
+                culture = _localizationOptions.Value.DefaultCulture;
+                InitJsonFromCulture(culture);
                 return GetString(name, false);
             }
 
@@ -206,17 +186,40 @@ namespace Askmethat.Aspnet.JsonLocalizer.Localizer
             if (_localizationOptions.Value.MissingTranslationLogBehavior ==
                 MissingTranslationLogBehavior.LogConsoleError)
             {
-                Console.Error.WriteLine($"{name} does not contain any translation");
+                Console.Error.WriteLine($"'{name}' does not contain any translation for {culture?.TwoLetterISOLanguageName}");
+            }
+
+            // Notify the user that a translation was not found for the current string
+            // only if logging is defined in options.MissingTranslationLogBehavior
+            if (_localizationOptions.Value.MissingTranslationLogBehavior ==
+                MissingTranslationLogBehavior.CollectToJSON)
+            {
+                var key = culture?.TwoLetterISOLanguageName ?? "default";
+                if (_missingJsonValues is null)
+                    _missingJsonValues = new Dictionary<string, IDictionary<string, string>>();
+                if (!_missingJsonValues.TryGetValue(key, out var localeMissingValues))
+                {
+                    localeMissingValues = new Dictionary<string, string>();
+                    _missingJsonValues.Add(key, localeMissingValues);
+                }
+                if (localeMissingValues.TryAdd(name, name))
+                {
+                    Console.Error.WriteLine($"'{name}' added to missing values");
+                    WriteMissingTranslations();
+                }
             }
 
             return null;
         }
 
+#if NETCORE
+
         public MarkupString GetHtmlBlazorString(string name, bool shouldTryDefaultCulture = true)
         {
             return new MarkupString(GetString(name, shouldTryDefaultCulture));
         }
-        
+
+#endif
         private void InitJsonFromCulture(CultureInfo cultureInfo)
         {
             InitJsonStringLocalizer(cultureInfo);
@@ -273,6 +276,30 @@ namespace Askmethat.Aspnet.JsonLocalizer.Localizer
                                         _localizationOptions.Value.SupportedCultureInfos.ToArray())
             {
                 InitJsonFromCulture(cultureInfo);
+            }
+        }
+
+        private void WriteMissingTranslations()
+        {
+            if (!string.IsNullOrWhiteSpace(_missingTranslations) && (_missingJsonValues?.Count ?? 0) > 0)
+            {
+                try
+                {
+                    foreach (var locale in _missingTranslations)
+                    {
+                        // save missing values
+                        var json = JsonSerializer.Serialize(_missingJsonValues);
+                        Console.Error.WriteLine($"Writing {_missingJsonValues?.Count} missing translations to {Path.GetFullPath(_missingTranslations)}");
+                        lock (this)
+                        {
+                            File.WriteAllText(_missingTranslations, json);
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    Console.Error.WriteLine($"Cannot write missing translations to {Path.GetFullPath(_missingTranslations)}");
+                }
             }
         }
 

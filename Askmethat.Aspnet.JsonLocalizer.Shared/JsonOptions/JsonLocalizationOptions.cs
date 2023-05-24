@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 using Askmethat.Aspnet.JsonLocalizer.Extensions;
 using Microsoft.Extensions.Caching.Distributed;
@@ -14,8 +15,15 @@ namespace Askmethat.Aspnet.JsonLocalizer.JsonOptions
         private const char PLURAL_SEPARATOR = '|';
         private const string DEFAULT_RESOURCES = "Resources";
         private const string DEFAULT_CULTURE = "en-US";
+        public const string DEFAULT_MISSING_TRANSLATIONS = "MissingTranslations.json";
 
         public new string ResourcesPath { get; set; } = DEFAULT_RESOURCES;
+
+        /// <summary>
+        /// This property enables to configure additional resource paths to look for localizations files
+        /// </summary>        
+        public string[] AdditionalResourcePaths { get; set; }
+        
         /// We cache all values to memory to avoid loading files for each request, this parameter defines the time after which the cache is refreshed.
         public TimeSpan CacheDuration { get; set; } = TimeSpan.FromMinutes(30);
 
@@ -120,5 +128,22 @@ namespace Askmethat.Aspnet.JsonLocalizer.JsonOptions
         /// Define JSON Files management. See documentation for more information
         /// </summary>
         public LocalizationMode LocalizationMode { get; set; } = LocalizationMode.Basic;
+
+        /// <summary>
+        /// Local file name where the missing translation JSON values can be written. See documentation for more information
+        /// </summary>
+        public string MissingTranslationsOutputFile { get; set; } = DEFAULT_MISSING_TRANSLATIONS;
+
+        /// <summary>
+        /// If a list of files is provided, the localizer will not attempt to scan i18n directories. This option is required for Blazor Wasm.
+        /// </summary>
+        public string[] JsonFileList { get; set; } = null;
+
+        public Assembly Assembly { get; set; } = null;
+
+        /// <summary>
+        /// This properly will ignore the JSON errors if set to true. Recommended in production but not in development.
+        /// </summary>
+        public bool IgnoreJsonErrors { get; set; } = false;
     }
 }

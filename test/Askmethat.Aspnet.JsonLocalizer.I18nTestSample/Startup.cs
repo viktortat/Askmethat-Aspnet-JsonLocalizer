@@ -11,11 +11,11 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Askmethat.Aspnet.JsonLocalizer.I18nTestSample.Data;
+using Askmethat.Aspnet.JsonLocalizer.Sample.I18nTest.Data;
 using Askmethat.Aspnet.JsonLocalizer.JsonOptions;
 using Microsoft.AspNetCore.Localization;
 
-namespace Askmethat.Aspnet.JsonLocalizer.I18nTestSample
+namespace Askmethat.Aspnet.JsonLocalizer.Sample.I18nTest
 {
     public class Startup
     {
@@ -48,11 +48,13 @@ namespace Askmethat.Aspnet.JsonLocalizer.I18nTestSample
             services.AddJsonLocalization(options =>
             {
                 options.ResourcesPath = _jsonLocalizationOptions.ResourcesPath;
+                options.AdditionalResourcePaths = _jsonLocalizationOptions.AdditionalResourcePaths;
                 options.UseBaseName = _jsonLocalizationOptions.UseBaseName;
                 options.CacheDuration = _jsonLocalizationOptions.CacheDuration;
                 options.SupportedCultureInfos = _jsonLocalizationOptions.SupportedCultureInfos;
                 options.FileEncoding = _jsonLocalizationOptions.FileEncoding;
                 options.IsAbsolutePath = _jsonLocalizationOptions.IsAbsolutePath;
+                options.MissingTranslationLogBehavior = MissingTranslationLogBehavior.CollectToJSON;
                 options.LocalizationMode = LocalizationMode.I18n;
             });
             

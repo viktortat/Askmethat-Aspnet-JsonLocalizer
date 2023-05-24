@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using Askmethat.Aspnet.JsonLocalizer.Format;
 using Askmethat.Aspnet.JsonLocalizer.JsonOptions;
-using Newtonsoft.Json;
 
 namespace Askmethat.Aspnet.JsonLocalizer.Localizer.Modes
 {
@@ -19,9 +18,19 @@ namespace Askmethat.Aspnet.JsonLocalizer.Localizer.Modes
             
             foreach (string file in myFiles)
             {
-                ConcurrentDictionary<string, JsonLocalizationFormat> tempLocalization =
-                    LocalisationModeHelpers.ReadAndDeserializeFile<string, JsonLocalizationFormat>(file,
-                        options.FileEncoding);
+                ConcurrentDictionary<string, JsonLocalizationFormat> tempLocalization = null;
+                try
+                {
+                    tempLocalization =
+                        LocalisationModeHelpers.ReadAndDeserializeFile<string, JsonLocalizationFormat>(file,
+                            options.FileEncoding);
+                }
+                catch (Exception ex)
+                {
+                    if (!options.IgnoreJsonErrors)
+                        throw;
+                        
+                }
 
                 if (tempLocalization == null)
                 {

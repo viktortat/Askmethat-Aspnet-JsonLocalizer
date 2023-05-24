@@ -49,7 +49,7 @@ namespace Askmethat.Aspnet.JsonLocalizer.Extensions
                 Console.Error.WriteLine("Setup Action seems to be null, The localization options will not be override. For any helps create an issue at ");
                 AddJsonLocalizationServices(services);
             }
-
+            //IWebHostEnvironment serverEnv, IWebAssemblyHostEnvironment clientEnv
             AddJsonLocalizationServices(services, setupAction);
 
             return services;
@@ -64,7 +64,7 @@ namespace Askmethat.Aspnet.JsonLocalizer.Extensions
             _ = services.AddScoped(typeof(IJsonStringLocalizer<>), typeof(JsonStringLocalizerOfT<>));
             _ = services.AddScoped<IStringLocalizer, JsonStringLocalizer>();
             _ = services.AddScoped(typeof(IStringLocalizer<>), typeof(JsonStringLocalizerOfT<>));
-
+            _ = services.AddSingleton<EnvironmentWrapper>();
         }
 
         /// <summary>

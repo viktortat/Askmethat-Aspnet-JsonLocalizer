@@ -32,20 +32,25 @@ namespace Askmethat.Aspnet.JsonLocalizer.Test.Localizer
         {
             InitLocalizer(new CultureInfo("fr-FR"));
 
-            LocalizedString result = localizer.GetString("Name1");
+            LocalizedString result = localizer.GetString("Name1");            
 
             Assert.AreEqual("Mon Nom 1", result);
+
+            LocalizedString result2 = localizer.GetString("Name3");
+
+            Assert.IsTrue(result2.ResourceNotFound);
+
         }
 
-        [TestMethod]
-        public void TestReadName1_AbsolutePath_TypeLocalizer()
-        {
-            InitLocalizer(new CultureInfo("fr-FR"));
+        //[TestMethod]
+        //public void TestReadName1_AbsolutePath_TypeLocalizer()
+        //{
+        //    InitLocalizer(new CultureInfo("fr-FR"));
 
-            LocalizedString result = localizer.GetString("Name1");
+        //    LocalizedString result = localizer.GetString("Name1");
 
-            Assert.AreEqual("Mon Nom 1", result);
-        }
+        //    Assert.AreEqual("Mon Nom 1", result);
+        //}
 
     }
 }

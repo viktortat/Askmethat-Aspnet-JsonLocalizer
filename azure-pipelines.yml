@@ -16,6 +16,11 @@ variables:
 
 
 steps:
+- task: UseDotNet@2
+  displayName: 'Use .NET Core sdk'
+  inputs:
+    packageType: sdk
+    version: 7.0.x
 - task: PowerShell@2
   inputs:
     targetType: 'inline'
@@ -49,11 +54,20 @@ steps:
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'CI_BUILD_TAG'
 
+- task: DotNetCoreCLI@2
+  displayName: 'Pack WASM'
+  inputs:
+    command: 'pack'
+    packagesToPack: 'Askmethat.Aspnet.JsonLocalizer/Askmethat.Aspnet.JsonLocalizer.Wasm.csproj'
+    nobuild: true
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'CI_BUILD_TAG'
+
 - task: CopyFiles@2
   displayName: 'Copy packages'
   condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
   inputs:
-    Contents: '**/*.nupkg'
+    Contents: '**/*.$(CI_BUILD_TAG).nupkg'
     TargetFolder: '$(Build.ArtifactStagingDirectory)'
     flattenFolders: true
 - task: PublishBuildArtifacts@1
